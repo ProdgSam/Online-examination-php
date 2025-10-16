@@ -1,56 +1,141 @@
 <?php
-
 //header.php
-
 include('Examination.php');
-
 $exam = new Examination;
-
 $exam->admin_session_private();
-
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  	<title>Online Examination System in PHP</title>
-  	<meta charset="utf-8">
+    <title>Admin Dashboard - Online Examination System</title>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/dataTables.bootstrap4.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.10.19/js/dataTables.bootstrap4.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/guillaumepotier/Parsley.js@2.9.1/dist/parsley.js"></script>
-  	<link rel="stylesheet" href="../style/style.css" />
-    <link rel="stylesheet" href="../style/bootstrap-datetimepicker.css" />
+
+    <!-- Bootstrap 4 CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../style/style.css">
+    <link rel="stylesheet" href="../style/bootstrap-datetimepicker.css">
+
+    <!-- jQuery & Bootstrap JS -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.1/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+    <!-- Parsley JS -->
+    <script src="https://cdn.jsdelivr.net/gh/guillaumepotier/Parsley.js@2.9.1/dist/parsley.min.js"></script>
+    <!-- DateTimePicker -->
     <script src="../style/bootstrap-datetimepicker.js"></script>
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f6f9;
+        }
+        .sidebar {
+            height: 100vh;
+            background-color: #343a40;
+            padding-top: 20px;
+        }
+        .sidebar a {
+            color: #c2c7d0;
+            display: block;
+            padding: 10px 20px;
+            text-decoration: none;
+        }
+        .sidebar a:hover, .sidebar a.active {
+            background-color: #495057;
+            color: #fff;
+        }
+        .content {
+            margin-left: 220px;
+            padding: 20px;
+        }
+        .card-stat {
+            border-radius: 0.5rem;
+            transition: 0.3s;
+        }
+        .card-stat:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .navbar-dark .navbar-brand {
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-	<div class="jumbotron text-center" style="margin-bottom:0; padding: 1rem 1rem;">
-  		<img src="logo.png" class="img-fluid" width="300" alt="Online Examination System in PHP" />
-	</div>
+    <!-- Sidebar -->
+    <div class="d-flex">
+        <div class="sidebar position-fixed">
+            <h4 class="text-center text-white mb-4">Admin Panel</h4>
+            <a href="index.php" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="exam.php"><i class="fas fa-file-alt"></i> Exams</a>
+            <a href="user.php"><i class="fas fa-users"></i> Users</a>
+            <a href="results.php"><i class="fas fa-chart-line"></i> Results</a>
+            <a href="settings.php"><i class="fas fa-cog"></i> Settings</a>
+            <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
 
-    <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-        <a class="navbar-brand" href="index.php">Admin Side</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="collapsibleNavbar">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" href="exam.php">Exam</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="user.php">User</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="logout.php">Logout</a>
-                </li>   
-            </ul>
-        </div>  
-    </nav>
+        <!-- Page Content -->
+        <div class="content flex-grow-1">
+            <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4">
+                <a class="navbar-brand" href="index.php">Online Exam Admin</a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#topNavbar">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="topNavbar">
+                    <ul class="navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <span class="nav-link">Welcome, Admin</span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
 
-	<div class="container-fluid">
+            <!-- Dashboard Stats -->
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-primary text-white card-stat p-3">
+                        <div class="card-body">
+                            <h5>Total Exams</h5>
+                            <h2>
+                                <?php echo $exam->get_total_exams(); ?>
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-success text-white card-stat p-3">
+                        <div class="card-body">
+                            <h5>Total Users</h5>
+                            <h2>
+                                <?php echo $exam->get_total_users(); ?>
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-warning text-white card-stat p-3">
+                        <div class="card-body">
+                            <h5>Active Exams</h5>
+                            <h2>
+                                <?php echo $exam->get_active_exams(); ?>
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main content starts here -->

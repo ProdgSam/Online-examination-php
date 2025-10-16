@@ -264,23 +264,41 @@ include('header.php');
 <script>
 
 $(document).ready(function(){
-	
-	var dataTable = $('#exam_data_table').DataTable({
-		"processing" : true,
-		"serverSide" : true,
-		"order" : [],
-		"ajax" : {
-			url: "ajax_action.php",
-			method:"POST",
-			data:{action:'fetch', page:'exam'}
-		},
-		"columnDefs":[
-			{
-				"targets":[7, 8, 9],
-				"orderable":false,
-			},
-		],
-	});
+    
+    var dataTable = $('#exam_data_table').DataTable({
+        "processing": true,
+        "serverSide": true,
+        "order": [],
+        "ajax": {
+            url: "ajax_action.php",
+            method: "POST",
+            data: {action:'fetch', page:'exam'},
+            error: function (xhr, error, thrown) {
+                console.log('DataTables error:', error);
+                console.log('Details:', thrown);
+                $('#exam_data_table_processing').hide();
+            }
+        },
+        "columnDefs":[
+            {
+                "targets":[7, 8, 9, 10],
+                "orderable": false,
+            },
+        ],
+        "columns": [
+            { "data": 0 }, // Exam Title
+            { "data": 1 }, // Date & Time
+            { "data": 2 }, // Duration
+            { "data": 3 }, // Total Question
+            { "data": 4 }, // Right Answer Mark
+            { "data": 5 }, // Wrong Answer Mark
+            { "data": 6 }, // Status
+            { "data": 7 }, // Enroll
+            { "data": 8 }, // Question
+            { "data": 9 }, // Result
+            { "data": 10 } // Action
+        ],
+    });
 
 	function reset_form()
 	{

@@ -404,6 +404,37 @@ class Examination
 			return $row["attendance_status"];
 		}
 	}
+
+	function get_total_exams()
+	{
+		$this->query = "
+		SELECT COUNT(*) as total 
+		FROM online_exam_table
+		";
+		$result = $this->query_result();
+		return $result[0]['total'] ?? 0;
+	}
+
+	function get_total_users()
+	{
+		$this->query = "
+		SELECT COUNT(*) as total 
+		FROM user_table
+		";
+		$result = $this->query_result();
+		return $result[0]['total'] ?? 0;
+	}
+
+	function get_active_exams()
+	{
+		$this->query = "
+		SELECT COUNT(*) as total 
+		FROM online_exam_table 
+		WHERE online_exam_status = 'Started'
+		";
+		$result = $this->query_result();
+		return $result[0]['total'] ?? 0;
+	}
 }
 
 ?>
