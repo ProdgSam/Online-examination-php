@@ -80,8 +80,8 @@ $exam->admin_session_private();
             <a href="index.php" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
             <a href="exam.php"><i class="fas fa-file-alt"></i> Exams</a>
             <a href="user.php"><i class="fas fa-users"></i> Users</a>
-            <a href="results.php"><i class="fas fa-chart-line"></i> Results</a>
-            <a href="settings.php"><i class="fas fa-cog"></i> Settings</a>
+            <span class="nav-link disabled text-muted"><i class="fas fa-chart-line"></i> Results</span>
+            <span class="nav-link disabled text-muted"><i class="fas fa-cog"></i> Settings</span>
             <a href="logout.php"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </div>
 
