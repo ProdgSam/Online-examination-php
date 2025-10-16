@@ -1,21 +1,32 @@
 <?php
+// We don't need to start session here as it's already started in Examination.php
+// Include site header (loads Bootstrap, styles and scripts)
+include_once 'header.php';
+
 // Include required class and initialize
-include('master/Examination.php');
+include_once('master/Examination.php');
 $exam = new Examination;
 
 $exam_id = null;
+
+// Read and normalize exam code from GET to avoid repeating raw accesses
+$code = '';
+if (isset($_GET['code'])) {
+    $code = trim($_GET['code']);
+}
 
 // Identify which exam is being accessed
 if (isset($_GET['id'])) {
     $exam_id = $_GET['id'];
 } elseif (isset($_GET['exam_id'])) {
     $exam_id = $_GET['exam_id'];
-} elseif (isset($_GET['code'])) {
-    // Lookup exam_id using exam code
+} elseif ($code !== '') {
+    // Lookup exam_id using exam code (escape to avoid breaking query)
+    $escaped_code = addslashes($code);
     $exam->query = "
         SELECT online_exam_id 
         FROM online_exam_table 
-        WHERE online_exam_code = '" . $_GET['code'] . "' 
+        WHERE online_exam_code = '$escaped_code' 
         LIMIT 1
     ";
     $result = $exam->query_result();
@@ -91,94 +102,110 @@ if ($exam_status == 'Completed') {
     <div class="card">
         <div class="card-header">
             <div class="row">
-                <div class="col-md-8">Online Exam Result</div>
+                <div class="col-md-8">
+                    <h4 class="mb-0">Online Exam Questions</h4>
+                </div>
                 <div class="col-md-4 text-end">
-                    <a href="pdf_exam_result.php?code=<?php echo htmlspecialchars($_GET["code"]); ?>" 
-                       class="btn btn-danger btn-sm" target="_blank">PDF</a>
+                    <div id="exam_timer" class="text-danger h4"></div>
                 </div>
             </div>
         </div>
 
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover">
-                    <tr>
-                        <th>Question</th>
-                        <th>Option 1</th>
-                        <th>Option 2</th>
-                        <th>Option 3</th>
-                        <th>Option 4</th>
-                        <th>Your Answer</th>
-                        <th>Correct Answer</th>
-                        <th>Result</th>
-                        <th>Marks</th>
-                    </tr>
-
-                    <?php
-                    $total_mark = 0;
-
-                    foreach ($result as $row) {
-                        // Get all options for this question
-                        $exam->query = "
-                            SELECT * FROM option_table 
-                            WHERE question_id = '" . $row["question_id"] . "'
-                        ";
-                        $sub_result = $exam->query_result();
-
-                        $user_answer = '';
-                        $original_answer = '';
-                        $question_result = '';
-
-                        // Determine result label
-                        if ($row['marks'] == '0') {
-                            $question_result = '<h4 class="badge bg-secondary">Not Attempted</h4>';
-                        } elseif ($row['marks'] > '0') {
-                            $question_result = '<h4 class="badge bg-success">Correct</h4>';
-                        } elseif ($row['marks'] < '0') {
-                            $question_result = '<h4 class="badge bg-danger">Wrong</h4>';
-                        }
-
-                        echo '<tr>';
-                        echo '<td>' . htmlspecialchars($row['question_title']) . '</td>';
-
-                        // Display all options
-                        foreach ($sub_result as $sub_row) {
-                            echo '<td>' . htmlspecialchars($sub_row["option_title"]) . '</td>';
-
-                            if ($sub_row["option_number"] == $row['user_answer_option']) {
-                                $user_answer = $sub_row['option_title'];
-                            }
-
-                            if ($sub_row['option_number'] == $row['answer_option']) {
-                                $original_answer = $sub_row['option_title'];
-                            }
-                        }
-
-                        echo '<td>' . htmlspecialchars($user_answer) . '</td>';
-                        echo '<td>' . htmlspecialchars($original_answer) . '</td>';
-                        echo '<td>' . $question_result . '</td>';
-                        echo '<td>' . htmlspecialchars($row["marks"]) . '</td>';
-                        echo '</tr>';
-                    }
-
-                    // Calculate total marks
+            <!-- Progress Bar -->
+            <div class="progress mb-4" style="height: 10px;">
+                <div class="progress-bar" role="progressbar" style="width: 0%" 
+                     aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" id="examProgress"></div>
+            </div>
+            
+            <form id="exam_form" method="post" action="exam_result.php">
+                <input type="hidden" name="exam_id" value="<?php echo $exam_id; ?>">
+                <div id="exam_questions">
+                <?php
+                $question_number = 1;
+                $questions_per_page = 4;
+                $total_questions = count($result);
+                $total_pages = ceil($total_questions / $questions_per_page);
+                
+                foreach ($result as $row) {
+                    // Get options for this question
                     $exam->query = "
-                        SELECT SUM(marks) as total_mark 
-                        FROM user_exam_question_answer 
-                        WHERE user_id = '" . $_SESSION['user_id'] . "' 
-                        AND exam_id = '" . $exam_id . "'
+                        SELECT * FROM option_table 
+                        WHERE question_id = '" . $row["question_id"] . "'
+                        ORDER BY option_number
                     ";
-                    $marks_result = $exam->query_result();
-
-                    foreach ($marks_result as $row) {
-                        echo '
-                        <tr>
-                            <td colspan="8" align="right"><b>Total Marks</b></td>
-                            <td align="right"><b>' . htmlspecialchars($row["total_mark"]) . '</b></td>
-                        </tr>';
+                    $options = $exam->query_result();
+                    
+                    // Calculate page number for this question
+                    $page_number = ceil($question_number / $questions_per_page);
+                    
+                    // Start a new page container if this is the first question of a page
+                    if (($question_number - 1) % $questions_per_page === 0) {
+                        echo '<div class="question-page" data-page="' . $page_number . '" ' .
+                             'style="display: ' . ($page_number === 1 ? 'block' : 'none') . ';">';
                     }
                     ?>
-                </table>
+                    <div class="question-container mb-4 p-4 border rounded bg-light">
+                        <h5 class="card-title border-bottom pb-2">Question <?php echo $question_number; ?></h5>
+                        <p class="question-text h5 mb-4"><?php echo htmlspecialchars($row['question_title']); ?></p>
+                        
+                        <div class="options-container">
+                            <?php foreach ($options as $option): ?>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input answer-input" type="radio" 
+                                       name="question_<?php echo $row['question_id']; ?>" 
+                                       id="option_<?php echo $row['question_id'].'_'.$option['option_number']; ?>"
+                                       value="<?php echo $option['option_number']; ?>"
+                                       data-question="<?php echo $question_number; ?>"
+                                       required>
+                                <label class="form-check-label h6" 
+                                       for="option_<?php echo $row['question_id'].'_'.$option['option_number']; ?>">
+                                    <?php echo htmlspecialchars($option['option_title']); ?>
+                                </label>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        
+                    </div>
+                    <?php
+                    // Close the page container if this is the last question of a page or the last question overall
+                    if ($question_number % $questions_per_page === 0 || $question_number === $total_questions) {
+                        ?>
+                        <div class="page-nav d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <button type="button" class="btn btn-secondary prev-page" 
+                                    <?php echo $page_number === 1 ? 'disabled' : ''; ?>>
+                                <i class="fas fa-arrow-left me-2"></i> Previous Page
+                            </button>
+                            <div class="text-center">
+                                <span class="badge bg-primary px-3 py-2">
+                                    Page <?php echo $page_number; ?> of <?php echo $total_pages; ?>
+                                </span>
+                            </div>
+                            <?php if ($page_number === $total_pages): ?>
+                            <button type="submit" class="btn btn-success submit-exam">
+                                <i class="fas fa-paper-plane me-2"></i> Submit Exam
+                            </button>
+                            <?php else: ?>
+                            <button type="button" class="btn btn-primary next-page">
+                                Next Page <i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                            <?php endif; ?>
+                        </div>
+                        </div><!-- Close page container -->
+                        <?php
+                    }
+                    $question_number++;
+                }
+                ?>
+                </div>
+                
+                <div class="d-grid gap-2 col-6 mx-auto mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg shadow">
+                        <i class="fas fa-paper-plane me-2"></i> Submit Answers
+                    </button>
+                </div>
+            </form>
+
             </div>
         </div>
     </div>
@@ -278,13 +305,285 @@ if ($exam_status == 'Completed') {
       </div>
     </div>
     <script>
+      // Add Chart.js
       document.addEventListener('DOMContentLoaded', function() {
-        var examModal = new bootstrap.Modal(document.getElementById('examModal'));
-        examModal.show();
+        // Initialize exam timer if needed
+        if (document.getElementById('exam_timer')) {
+            var duration = <?php echo $exam_duration; ?>;
+            startTimer(duration, document.getElementById('exam_timer'));
+        }
+        
+        // Handle form submission
+        const examForm = document.getElementById('exam_form');
+        if (examForm) {
+            examForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Collect all answers
+                const formData = new FormData(examForm);
+                const answers = {};
+                for (let pair of formData.entries()) {
+                    answers[pair[0]] = pair[1];
+                }
+                
+                // Send answers to server
+                fetch('submit_exam.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        exam_id: '<?php echo $exam_id; ?>',
+                        answers: answers
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showResults(data.results);
+                    } else {
+                        alert('Error submitting exam: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error submitting exam. Please try again.');
+                });
+            });
+        }
       });
-      function startExam() {
-        window.location.href = 'take_exam.php?code=<?php echo htmlspecialchars($_GET["code"]); ?>';
+
+      function startTimer(duration, display) {
+          var timer = duration, minutes, seconds;
+          var countdown = setInterval(function () {
+              minutes = parseInt(timer / 60, 10);
+              seconds = parseInt(timer % 60, 10);
+
+              minutes = minutes < 10 ? "0" + minutes : minutes;
+              seconds = seconds < 10 ? "0" + seconds : seconds;
+
+              display.textContent = minutes + ":" + seconds;
+
+              if (--timer < 0) {
+                  clearInterval(countdown);
+                  document.getElementById('exam_form').submit();
+              }
+          }, 1000);
       }
+
+      function showResults(results) {
+          // Create results container
+          const resultsDiv = document.createElement('div');
+          resultsDiv.innerHTML = `
+              <div class="card mt-4">
+                  <div class="card-header">
+                      <h4>Exam Results</h4>
+                  </div>
+                  <div class="card-body">
+                      <div class="row">
+                          <div class="col-md-6">
+                              <canvas id="resultsChart"></canvas>
+                          </div>
+                          <div class="col-md-6">
+                              <div class="results-summary">
+                                  <h5>Summary</h5>
+                                  <p>Total Questions: ${results.total}</p>
+                                  <p>Correct Answers: ${results.correct}</p>
+                                  <p>Score: ${results.percentage}%</p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          `;
+          
+          // Replace form with results
+          document.getElementById('exam_form').replaceWith(resultsDiv);
+          
+          // Create chart
+          const ctx = document.getElementById('resultsChart').getContext('2d');
+          new Chart(ctx, {
+              type: 'pie',
+              data: {
+                  labels: ['Correct', 'Incorrect'],
+                  datasets: [{
+                      data: [results.correct, results.total - results.correct],
+                      backgroundColor: ['#28a745', '#dc3545']
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  plugins: {
+                      legend: {
+                          position: 'bottom'
+                      }
+                  }
+              }
+          });
+      }
+    </script>
+    <!-- Add Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .question-container {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .question-container:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+        .form-check-input:checked {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .form-check-input {
+            width: 1.2em;
+            height: 1.2em;
+            margin-top: 0.25em;
+        }
+        .form-check-label {
+            padding-left: 0.5em;
+        }
+        #exam_timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 0.5rem;
+            border-radius: 4px;
+            background-color: #f8d7da;
+        }
+        .question-nav {
+            border-top: 1px solid #dee2e6;
+            padding-top: 1rem;
+        }
+        .progress {
+            height: 10px;
+            border-radius: 5px;
+            background-color: #e9ecef;
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+            background-color: #28a745;
+        }
+        .question-container {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .question-container.active {
+            display: block;
+            opacity: 1;
+        }
+        .badge {
+            font-size: 0.9rem;
+        }
+        .next-question, .prev-question {
+            transition: all 0.2s ease;
+        }
+        .next-question:not(:disabled):hover, 
+        .prev-question:not(:disabled):hover {
+            transform: scale(1.05);
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const pages = document.querySelectorAll('.question-page');
+            const progressBar = document.getElementById('examProgress');
+            const totalQuestions = document.querySelectorAll('.question-container').length;
+            let currentPage = 1;
+            let answeredQuestions = new Set();
+            
+            // Update progress bar
+            function updateProgress() {
+                const progress = (answeredQuestions.size / totalQuestions) * 100;
+                progressBar.style.width = progress + '%';
+                progressBar.setAttribute('aria-valuenow', progress);
+                
+                // Update color based on progress
+                if (progress < 33) {
+                    progressBar.className = 'progress-bar bg-danger';
+                } else if (progress < 66) {
+                    progressBar.className = 'progress-bar bg-warning';
+                } else {
+                    progressBar.className = 'progress-bar bg-success';
+                }
+            }
+            
+            // Check if question is answered
+            function checkAnswer(questionNumber) {
+                const inputs = document.querySelectorAll(`[data-question="${questionNumber}"].answer-input`);
+                for (let input of inputs) {
+                    if (input.checked) {
+                        answeredQuestions.add(questionNumber);
+                        updateProgress();
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            // Handle navigation
+            document.querySelectorAll('.next-question').forEach(button => {
+                button.addEventListener('click', () => {
+                    if (currentQuestion < totalQuestions) {
+                        document.querySelector(`[data-question="${currentQuestion}"]`).style.display = 'none';
+                        currentQuestion++;
+                        document.querySelector(`[data-question="${currentQuestion}"]`).style.display = 'block';
+                        updateNavButtons();
+                    }
+                });
+            });
+            
+            document.querySelectorAll('.prev-question').forEach(button => {
+                button.addEventListener('click', () => {
+                    if (currentQuestion > 1) {
+                        document.querySelector(`[data-question="${currentQuestion}"]`).style.display = 'none';
+                        currentQuestion--;
+                        document.querySelector(`[data-question="${currentQuestion}"]`).style.display = 'block';
+                        updateNavButtons();
+                    }
+                });
+            });
+            
+            // Update navigation button states
+            function updateNavButtons() {
+                document.querySelectorAll('.prev-question').forEach(button => {
+                    button.disabled = currentQuestion === 1;
+                });
+                
+                document.querySelectorAll('.next-question').forEach(button => {
+                    if (currentQuestion === totalQuestions) {
+                        button.style.display = 'none';
+                    } else {
+                        button.style.display = 'block';
+                    }
+                });
+            }
+            
+            // Track answered questions
+            document.querySelectorAll('.answer-input').forEach(input => {
+                input.addEventListener('change', () => {
+                    const questionNumber = parseInt(input.getAttribute('data-question'));
+                    checkAnswer(questionNumber);
+                });
+            });
+            
+            // Initialize
+            updateProgress();
+            updateNavButtons();
+            
+            // Add form submission validation
+            document.getElementById('exam_form').addEventListener('submit', function(e) {
+                if (answeredQuestions.size < totalQuestions) {
+                    e.preventDefault();
+                    const unanswered = totalQuestions - answeredQuestions.size;
+                    if (!confirm(`You have ${unanswered} unanswered question(s). Are you sure you want to submit?`)) {
+                        return false;
+                    }
+                }
+            });
+        });
     </script>
     <?php
 }
