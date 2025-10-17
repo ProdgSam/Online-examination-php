@@ -112,7 +112,7 @@ include('header.php');
 	        		<input type="hidden" name="question_id" id="question_id" />
 	          		<input type="hidden" name="online_exam_id" id="hidden_online_exam_id" />
 	          		<input type="hidden" name="page" value="question" />
-	          		<input type="hidden" name="action" id="hidden_action" value="Edit" />
+	          		<input type="hidden" name="action" id="hidden_action" value="Add" />
 	          		<input type="submit" name="question_button_action" id="question_button_action" class="btn btn-success btn-sm" value="Add" />
 	          		<button type="button" class="btn btn-danger btn-sm" data-dismiss="modal">Close</button>
 	        	</div>
@@ -128,6 +128,33 @@ include('header.php');
 $(document).ready(function(){
 	
 var code = "<?php echo $_GET["code"]; ?>";
+
+// Verify exam code is present
+if (!code) {
+    alert('Error: No exam code provided');
+    window.location.href = 'exam.php';
+    return;
+}
+
+// Get exam ID from code
+$.ajax({
+    url: "ajax_action.php",
+    method: "POST",
+    data: {action: 'fetch_exam_id', page: 'question', code: code},
+    success: function(response) {
+        try {
+            var data = JSON.parse(response);
+            if (data.exam_id) {
+                $('#hidden_online_exam_id').val(data.exam_id);
+            } else {
+                alert('Error: Could not find exam');
+                window.location.href = 'exam.php';
+            }
+        } catch(e) {
+            console.error('Error parsing exam ID:', e);
+        }
+    }
+});
 
 var dataTable = $('#question_data_table').DataTable({
 	"processing" :true,
@@ -146,9 +173,17 @@ var dataTable = $('#question_data_table').DataTable({
 	],
 });
 
-	$('#question_form').parsley();
+		function reset_question_form() {
+        $('#question_form')[0].reset();
+        $('#question_form').parsley().reset();
+        $('#question_id').val('');
+        $('#hidden_action').val('Add');
+        $('#question_button_action').val('Add');
+    }
 
-	$('#question_form').on('submit', function(event){
+    $('#question_form').parsley();
+
+    $('#question_form').on('submit', function(event){
 		event.preventDefault();
 
 		$('#question_title').attr('required', 'required');
